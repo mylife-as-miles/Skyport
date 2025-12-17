@@ -794,18 +794,32 @@ export default function CyberMap({ passengers, searchQuery, onMapMove, aiCommand
                              <X className="w-4 h-4" />
                          </button>
                     </div>
-                    <div className="px-4 py-3 grid grid-cols-3 gap-4 text-center">
-                        <div>
-                            <div className="text-[9px] text-slate-500 uppercase font-bold">ALTITUDE</div>
-                            <div className="text-sm font-mono text-blue-300">{Math.round(selectedFlight.altitude)}m</div>
+                    <div className="px-4 py-3 grid grid-cols-4 gap-2 text-center">
+                        <div className="col-span-1">
+                            <div className="text-[9px] text-slate-500 uppercase font-bold">ALT</div>
+                            <div className="text-xs font-mono text-blue-300">{Math.round(selectedFlight.altitude)}m</div>
                         </div>
-                        <div>
-                            <div className="text-[9px] text-slate-500 uppercase font-bold">SPEED</div>
-                            <div className="text-sm font-mono text-blue-300">{Math.round(selectedFlight.velocity)}m/s</div>
+                        <div className="col-span-1">
+                            <div className="text-[9px] text-slate-500 uppercase font-bold">SPD</div>
+                            <div className="text-xs font-mono text-blue-300">{Math.round(selectedFlight.velocity)}m/s</div>
                         </div>
-                        <div>
-                            <div className="text-[9px] text-slate-500 uppercase font-bold">TRACK</div>
-                            <div className="text-sm font-mono text-blue-300">{Math.round(selectedFlight.true_track)}°</div>
+                        <div className="col-span-2 border-l border-slate-700 pl-2">
+                            <div className="text-[9px] text-slate-500 uppercase font-bold">STATUS</div>
+                            <div className={`text-xs font-mono font-bold uppercase tracking-wider ${
+                                selectedFlight.status === 'Climbing' || selectedFlight.status === 'Departing' ? 'text-emerald-400' :
+                                selectedFlight.status === 'Descending' || selectedFlight.status === 'Landing' ? 'text-yellow-400' :
+                                selectedFlight.status === 'Holding' ? 'text-purple-400' :
+                                'text-blue-300'
+                            }`}>
+                                {selectedFlight.status === 'Climbing' && '✈️ CLIMB'}
+                                {selectedFlight.status === 'Descending' && '↘ DESCEND'}
+                                {selectedFlight.status === 'Landing' && '🛬 LANDING'}
+                                {selectedFlight.status === 'Departing' && '🛫 TAKEOFF'}
+                                {selectedFlight.status === 'Holding' && '🌀 HOLDING'}
+                                {selectedFlight.status === 'Cruising' && '➡ CRUISE'}
+                                {selectedFlight.status === 'Grounded' && '⚓ GROUND'}
+                                {!selectedFlight.status && 'UNKNOWN'}
+                            </div>
                         </div>
                     </div>
                 </MotionDiv>

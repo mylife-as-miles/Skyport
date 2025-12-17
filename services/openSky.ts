@@ -1,4 +1,4 @@
-import { LiveFlight } from '../types';
+import { LiveFlight, FlightPhase } from '../types';
 
 // Default to ORD if no center provided
 const DEFAULT_CENTER = { lat: 41.9742, lng: -87.9073 };
@@ -16,12 +16,10 @@ export async function fetchLiveFlights(center?: { lat: number; lng: number }): P
 
   // If we are rate limited or within cache duration, return cached or mock
   if (isRateLimited && now - lastFetchTime < ERROR_BACKOFF) {
-      // console.log('Returning mock due to rate limit');
       return generateMockFlights(c.lat, c.lng);
   }
 
   if (now - lastFetchTime < CACHE_DURATION && cachedFlights.length > 0) {
-      // console.log('Returning cached flights');
       return cachedFlights;
   }
   
@@ -34,8 +32,7 @@ export async function fetchLiveFlights(center?: { lat: number; lng: number }): P
   };
 
   try {
-    // OpenSky Network API for anonymous users (limit: 400 requests/day, 10s resolution)
-    // We use a timeout to fail fast if the API hangs or CORS blocks it
+    // OpenSky Network API
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
 
@@ -64,26 +61,56 @@ export async function fetchLiveFlights(center?: { lat: number; lng: number }): P
         return cachedFlights;
     }
 
-    const flights = data.states.map((s: any) => ({
-      icao24: s[0],
-      callsign: s[1].trim() || 'N/A',
-      longitude: s[5],
-      latitude: s[6],
-      velocity: s[9] || 0,
-      true_track: s[10] || 0,
-      on_ground: s[8],
-      altitude: s[7] || 0
-    })).slice(0, 50); // Limit to 50 planes for performance
+    const flights: LiveFlight[] = data.states.map((s: any) => {
+        const flight: LiveFlight = {
+            icao24: s[0],
+            callsign: s[1].trim() || 'N/A',
+            longitude: s[5],
+            latitude: s[6],
+            velocity: s[9] || 0,
+            true_track: s[10] || 0,
+            on_ground: s[8],
+            altitude: s[7] || 0,
+            vertical_rate: s[11] || 0
+        };
+        flight.status = determineFlightStatus(flight);
+        return flight;
+    }).slice(0, 50);
 
     cachedFlights = flights;
     return flights;
 
   } catch (error) {
     console.warn("OpenSky API unavailable, using simulation data.", error);
-    // On network error, back off a bit but don't set permanent rate limit flag
     lastFetchTime = now;
     return generateMockFlights(c.lat, c.lng);
   }
+}
+
+function determineFlightStatus(flight: LiveFlight): FlightPhase {
+    if (flight.on_ground) return 'Grounded';
+
+    const vRate = flight.vertical_rate || 0;
+    const alt = flight.altitude;
+    const speed = flight.velocity;
+
+    // Climbing / Departing
+    if (vRate > 2.0) {
+        return alt < 1500 ? 'Departing' : 'Climbing';
+    }
+
+    // Descending / Landing
+    if (vRate < -2.0) {
+        return alt < 1500 ? 'Landing' : 'Descending';
+    }
+
+    // Holding (Heuristic: Low speed, not climbing/descending much, moderate altitude)
+    // 110 m/s is approx 213 knots. Holding speeds usually 200-265 knots.
+    if (speed < 110 && alt > 1000) {
+        return 'Holding';
+    }
+
+    return 'Cruising';
 }
 
 // Deterministic simulation for demo/fallback
@@ -93,29 +120,42 @@ function generateMockFlights(centerLat: number, centerLng: number): LiveFlight[]
   const now = Date.now() / 1000;
 
   for (let i = 0; i < count; i++) {
-    // Create somewhat circular paths or lines based on time
     const seed = i * 100;
     const speed = 0.02 + (i % 5) * 0.005;
     const angle = (now * speed + seed) % (Math.PI * 2);
     
     const radius = 0.05 + (i % 3) * 0.08;
-    const lat = centerLat + Math.sin(angle) * radius * 0.7; // Scale lat to reduce distortion
+    const lat = centerLat + Math.sin(angle) * radius * 0.7;
     const lng = centerLng + Math.cos(angle) * radius;
 
-    // Calculate simulated heading (tangent to circle)
     let track = ((angle + Math.PI/2) * 180 / Math.PI) % 360;
     if (track < 0) track += 360;
 
-    mockFlights.push({
+    // Simulate different phases based on index
+    let vRate = 0;
+    let alt = 1000 + i * 500;
+    let vel = 150 + (i * 10);
+    let onGround = false;
+
+    if (i % 5 === 0) { vRate = 5; alt = 500; } // Departing
+    else if (i % 5 === 1) { vRate = -5; alt = 800; } // Landing
+    else if (i % 5 === 2) { vel = 100; vRate = 0; alt = 3000; } // Holding
+    else if (i % 5 === 3) { onGround = true; alt = 0; vel = 0; } // Grounded
+
+    const flight: LiveFlight = {
       icao24: `sim-${i}`,
       callsign: `UA${200 + i}`,
       latitude: lat,
       longitude: lng,
-      velocity: 150 + (i * 10),
+      velocity: vel,
       true_track: track,
-      on_ground: false,
-      altitude: 1000 + i * 500
-    });
+      on_ground: onGround,
+      altitude: alt,
+      vertical_rate: vRate
+    };
+
+    flight.status = determineFlightStatus(flight);
+    mockFlights.push(flight);
   }
 
   return mockFlights;

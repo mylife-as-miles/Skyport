@@ -94,6 +94,16 @@ export async function sendUserMessage(text: string, location?: { lat: number, ln
         Be concise, professional, and high-tech in your tone. 
         Current location context: ${location ? `Lat: ${location.lat}, Lng: ${location.lng}` : 'Unknown'}.
 
+        **FLIGHT STATUS AWARENESS:**
+        You can now filter flights based on their live status:
+        - HOLDING: Flights circling or moving slowly at altitude (potential delays).
+        - LANDING: Flights descending below 1500m.
+        - DEPARTING: Flights climbing below 1500m.
+        - CRUISING: Flights in level flight.
+        - GROUNDED: Flights on the ground.
+
+        Use this knowledge to answer queries like "Any flights holding?" or "Is flight UA123 landing?".
+
         **CAPABILITIES:**
         1. You can control the map interface. To do so, output a valid JSON block at the very end of your response.
         2. To Move the Map: {"type": "FLY_TO", "target": {"lat": 40.7128, "lng": -74.0060, "label": "New York"}}

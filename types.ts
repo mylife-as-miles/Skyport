@@ -58,6 +58,8 @@ export interface ChatMessage {
   command?: MapCommand; // AI instruction to control the map
 }
 
+export type FlightPhase = 'Grounded' | 'Climbing' | 'Descending' | 'Cruising' | 'Landing' | 'Departing' | 'Holding';
+
 export interface LiveFlight {
   icao24: string;
   callsign: string;
@@ -67,4 +69,6 @@ export interface LiveFlight {
   true_track: number; // degrees
   on_ground: boolean;
   altitude: number; // meters
+  vertical_rate?: number; // m/s
+  status?: FlightPhase;
 }
