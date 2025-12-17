@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Radio, LocateFixed, Search, Radar, MapPin, X, Plane, Globe, ChevronDown, Crosshair, Utensils, Maximize2, Minimize2, ZoomIn, ZoomOut, Home, Activity, ShieldAlert, Cpu } from 'lucide-react';
 import L from 'leaflet';
-import { PassengerGroup, LiveFlight, Venue } from '../types';
+import { PassengerGroup, LiveFlight, Venue, MapCommand } from '../types';
 import { fetchLiveFlights } from '../services/openSky';
 import { fetchAmenities } from '../services/aiService';
 import { US_AIRPORTS, Airport } from '../services/airportData';
@@ -15,9 +15,10 @@ interface CyberMapProps {
   passengers: PassengerGroup[];
   searchQuery?: string;
   onMapMove?: (center: { lat: number, lng: number }) => void;
+  aiCommand?: MapCommand;
 }
 
-export default function CyberMap({ passengers, searchQuery, onMapMove }: CyberMapProps) {
+export default function CyberMap({ passengers, searchQuery, onMapMove, aiCommand }: CyberMapProps) {
   const mapRef = useRef<L.Map | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   
@@ -43,6 +44,7 @@ export default function CyberMap({ passengers, searchQuery, onMapMove }: CyberMa
   const [viewFilter, setViewFilter] = useState<'ALL' | 'AIR' | 'GND'>('ALL');
   const [isExpanded, setIsExpanded] = useState(false);
   const [radarTick, setRadarTick] = useState(0);
+  const [aiOverrideActive, setAiOverrideActive] = useState(false);
   
   // Navigation State
   const [mapCenter, setMapCenter] = useState<[number, number]>(INITIAL_CENTER as [number, number]);
@@ -119,6 +121,62 @@ export default function CyberMap({ passengers, searchQuery, onMapMove }: CyberMa
         mapRef.current = null;
     };
   }, []);
+
+  // --- 8. AI COMMAND HANDLER ---
+  useEffect(() => {
+      if (!aiCommand || !mapRef.current) return;
+
+      setAiOverrideActive(true);
+      setTimeout(() => setAiOverrideActive(false), 2000);
+
+      if (aiCommand.type === 'FLY_TO' && aiCommand.target) {
+          const { lat, lng, label } = aiCommand.target;
+
+          // Clear current selection
+          setSelectedAirport(null);
+          setSelectedFlight(null);
+          setSelectedVenue(null);
+
+          mapRef.current.flyTo([lat, lng], aiCommand.zoom || 13, {
+              animate: true,
+              duration: 2.0
+          });
+
+          // If it matches an airport, select it
+          const airport = US_AIRPORTS.find(a =>
+              (Math.abs(a.coords[0] - lat) < 0.05 && Math.abs(a.coords[1] - lng) < 0.05) ||
+              (label && a.code === label)
+          );
+
+          if (airport) {
+              setSelectedAirport(airport);
+              highlightAirportZone(airport, mapRef.current);
+          } else {
+              // Generic highlight if not a known airport
+              if (zoneLayerRef.current) {
+                  zoneLayerRef.current.clearLayers();
+                  L.circle([lat, lng], {
+                      radius: 2000,
+                      color: '#3b82f6',
+                      fillColor: '#3b82f6',
+                      fillOpacity: 0.1,
+                      dashArray: '5, 5'
+                  }).addTo(zoneLayerRef.current);
+              }
+          }
+
+          // Auto scan after move
+          setTimeout(() => {
+              loadAmenities([lat, lng]);
+          }, 2000);
+      }
+
+      if (aiCommand.type === 'SCAN_AREA') {
+          const center = mapRef.current.getCenter();
+          loadAmenities([center.lat, center.lng]);
+      }
+
+  }, [aiCommand]);
 
   // --- RESIZE HANDLER ---
   useEffect(() => {
@@ -483,6 +541,10 @@ export default function CyberMap({ passengers, searchQuery, onMapMove }: CyberMa
                 linear-gradient(90deg, rgba(34, 197, 94, 0.05) 1px, transparent 1px);
             background-size: 50px 50px;
         }
+        .glitch-overlay {
+            background: rgba(59, 130, 246, 0.1);
+            mix-blend-mode: overlay;
+        }
       `}</style>
 
       {/* Fullscreen HUD Overlays */}
@@ -524,6 +586,28 @@ export default function CyberMap({ passengers, searchQuery, onMapMove }: CyberMa
             </MotionDiv>
           </>
         )}
+      </AnimatePresence>
+
+      {/* AI OVERRIDE EFFECT */}
+      <AnimatePresence>
+          {aiOverrideActive && (
+              <MotionDiv
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="absolute inset-0 z-[1000] pointer-events-none flex items-center justify-center bg-blue-900/10 glitch-overlay"
+              >
+                  <div className="bg-slate-950/90 border border-blue-500/50 p-4 rounded-xl backdrop-blur-md shadow-[0_0_50px_rgba(59,130,246,0.3)]">
+                      <div className="flex items-center gap-3">
+                          <Cpu className="w-6 h-6 text-blue-400 animate-pulse" />
+                          <div className="flex flex-col">
+                              <span className="text-sm font-bold font-mono text-white tracking-widest">NEURAL OVERRIDE</span>
+                              <span className="text-[10px] text-blue-300 font-mono">EXECUTING COMMAND_SEQUENCE...</span>
+                          </div>
+                      </div>
+                  </div>
+              </MotionDiv>
+          )}
       </AnimatePresence>
 
       {/* Loading Overlay */}

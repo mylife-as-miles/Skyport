@@ -38,12 +38,24 @@ export interface Venue {
   };
 }
 
+export interface MapCommand {
+  type: 'FLY_TO' | 'SCAN_AREA';
+  target?: {
+    lat: number;
+    lng: number;
+    label?: string;
+  };
+  zoom?: number;
+  query?: string;
+}
+
 export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant' | 'system';
   content: string;
   timestamp: string;
   attachments?: Venue[]; // Places recommended in this turn
+  command?: MapCommand; // AI instruction to control the map
 }
 
 export interface LiveFlight {
