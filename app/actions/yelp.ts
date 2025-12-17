@@ -27,19 +27,11 @@ interface YelpBusiness {
 }
 
 export async function searchNearbyPlaces(lat: number, lng: number, category: string = 'food'): Promise<Venue[]> {
-    // Note: When running in Vite dev server with proxy, we don't strictly need the key here if the proxy handles it.
-    // However, if the proxy approach fails or we deploy elsewhere, we might need it.
-    // For the proxy setup in vite.config.ts, we use the relative path.
-
-    // Check if we are in a browser environment (which implies we should use the proxy)
     const isBrowser = typeof window !== 'undefined';
     const apiKey = process.env.YELP_API_KEY;
 
-    // If no key and not using proxy (or if proxy is not configured to inject headers), we can't fetch.
-    // But since we configured the proxy to inject the header, we can just fetch to the proxy.
-
     try {
-        const radius = 2000; // 2km radius (~1.2 miles)
+        const radius = 2000;
         const limit = 10;
         
         let url = `https://api.yelp.com/v3/businesses/search?latitude=${lat}&longitude=${lng}&term=${category}&radius=${radius}&sort_by=rating&limit=${limit}`;
@@ -48,11 +40,8 @@ export async function searchNearbyPlaces(lat: number, lng: number, category: str
         };
 
         if (isBrowser) {
-            // Use the proxy path
             url = `/api/yelp/businesses/search?latitude=${lat}&longitude=${lng}&term=${category}&radius=${radius}&sort_by=rating&limit=${limit}`;
-            // The proxy in vite.config.ts injects the Authorization header
         } else if (apiKey) {
-            // Server-side or direct usage (if CORS allows or SSR)
             headers['Authorization'] = `Bearer ${apiKey}`;
         } else {
              console.warn("Yelp API Key missing and not in browser context, returning empty list.");
@@ -61,7 +50,7 @@ export async function searchNearbyPlaces(lat: number, lng: number, category: str
 
         const response = await fetch(url, {
             headers,
-            next: { revalidate: 3600 } // Cache for 1 hour
+            next: { revalidate: 3600 }
         } as NextFetchRequestInit);
 
         if (!response.ok) {
@@ -103,17 +92,8 @@ interface YelpAIResponse {
 }
 
 export async function askYelpAI(query: string, chatId?: string, lat?: number, lng?: number): Promise<{ content: string; chatId: string }> {
-  // Similar logic for Yelp AI if needed, but the user asked specifically about "Nearby Recommendations" which usually maps to searchNearbyPlaces.
-  // We'll leave this as is for now or update if needed.
-
+  const isBrowser = typeof window !== 'undefined';
   const apiKey = process.env.YELP_API_KEY;
-
-  if (!apiKey) {
-    return {
-      content: "I am running in simulation mode. Please configure the YELP_API_KEY to enable live AI responses.",
-      chatId: chatId || 'simulated-chat-id'
-    };
-  }
 
   try {
     const payload: any = {
@@ -134,13 +114,27 @@ export async function askYelpAI(query: string, chatId?: string, lat?: number, ln
       };
     }
 
-    const response = await fetch('https://api.yelp.com/ai/chat/v2', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
+    let url = 'https://api.yelp.com/ai/chat/v2';
+    let headers: HeadersInit = {
         'Content-Type': 'application/json',
-        'accept': 'application/json'
-      },
+        'Accept': 'application/json'
+    };
+
+    if (isBrowser) {
+        url = '/api/yelp-ai';
+        // Authorization is injected by proxy
+    } else if (apiKey) {
+        headers['Authorization'] = `Bearer ${apiKey}`;
+    } else {
+        return {
+          content: "I am running in simulation mode. Please configure the YELP_API_KEY to enable live AI responses.",
+          chatId: chatId || 'simulated-chat-id'
+        };
+    }
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
       body: JSON.stringify(payload)
     });
 
@@ -152,7 +146,6 @@ export async function askYelpAI(query: string, chatId?: string, lat?: number, ln
 
     const data = await response.json();
     
-    // Check if the response matches expected structure, fallback if it varies
     const content = data.message?.content || data.response || "I processed your request.";
     const newChatId = data.chat_id || chatId || "new-session";
 
