@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Radio, LocateFixed, Search, Radar, MapPin, X, Plane, Globe, ChevronDown, Crosshair, Utensils, Maximize2, Minimize2, ZoomIn, ZoomOut } from 'lucide-react';
+import { Radio, LocateFixed, Search, Radar, MapPin, X, Plane, Globe, ChevronDown, Crosshair, Utensils, Maximize2, Minimize2, ZoomIn, ZoomOut, Home, Activity, ShieldAlert, Cpu } from 'lucide-react';
 import L from 'leaflet';
 import { PassengerGroup, LiveFlight, Venue } from '../types';
 import { fetchLiveFlights } from '../services/openSky';
@@ -138,6 +138,9 @@ export default function CyberMap({ passengers, searchQuery, onMapMove }: CyberMa
       if (e.key === 'Escape' && isExpanded) {
         toggleFullScreen();
       }
+      if (e.key.toLowerCase() === 'f' && e.target === document.body) {
+        toggleFullScreen();
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
@@ -145,6 +148,10 @@ export default function CyberMap({ passengers, searchQuery, onMapMove }: CyberMa
 
   const handleZoomIn = () => mapRef.current?.zoomIn();
   const handleZoomOut = () => mapRef.current?.zoomOut();
+  const handleHome = () => {
+    if (!mapRef.current) return;
+    mapRef.current.flyTo(INITIAL_CENTER as [number, number], 12, { animate: true });
+  };
 
   // --- 2. FETCH FLIGHT DATA LOOP ---
   useEffect(() => {
@@ -170,6 +177,7 @@ export default function CyberMap({ passengers, searchQuery, onMapMove }: CyberMa
   const loadAmenities = async (coords: [number, number]) => {
       setLoadingAmenities(true);
       
+      // Remove existing markers
       Object.values(amenityMarkersRef.current).forEach((m: L.Marker) => m.remove());
       amenityMarkersRef.current = {};
 
@@ -180,27 +188,33 @@ export default function CyberMap({ passengers, searchQuery, onMapMove }: CyberMa
       venues.forEach(place => {
           if (!place.coordinates) return;
           
-          let iconContent = '📍';
-          let borderColor = 'border-slate-500';
-          let glowColor = 'shadow-slate-500/50';
+          let iconContent = '🍴';
+          let borderColor = 'border-blue-500';
+          let glowColor = 'shadow-blue-500/50';
 
-          if (place.category.includes('Lounge')) {
-              iconContent = '🍸';
-              borderColor = 'border-purple-500';
-              glowColor = 'shadow-purple-500/50';
-          } else if (place.category.includes('Coffee')) {
+          const cat = place.category.toLowerCase();
+
+          if (cat.includes('coffee') || cat.includes('cafe')) {
               iconContent = '☕';
-              borderColor = 'border-orange-500';
-              glowColor = 'shadow-orange-500/50';
-          } else {
-              iconContent = '🍽';
-              borderColor = 'border-blue-500';
-              glowColor = 'shadow-blue-500/50';
+              borderColor = 'border-orange-400';
+              glowColor = 'shadow-orange-400/50';
+          } else if (cat.includes('hotel') || cat.includes('travel') || cat.includes('lodging')) {
+              iconContent = '🏨';
+              borderColor = 'border-emerald-400';
+              glowColor = 'shadow-emerald-400/50';
+          } else if (cat.includes('bar') || cat.includes('nightlife') || cat.includes('pub') || cat.includes('lounge')) {
+              iconContent = '🍺';
+              borderColor = 'border-purple-400';
+              glowColor = 'shadow-purple-400/50';
+          } else if (cat.includes('lounge')) {
+              iconContent = '🍸';
+              borderColor = 'border-cyan-400';
+              glowColor = 'shadow-cyan-400/50';
           }
 
           const icon = L.divIcon({
               className: 'amenity-icon',
-              html: `<div class="w-6 h-6 bg-slate-950 ${borderColor} border rounded-full flex items-center justify-center text-xs shadow-[0_0_10px_rgba(0,0,0,0.5)] ${glowColor} hover:scale-110 transition-transform cursor-pointer">
+              html: `<div class="w-6 h-6 bg-slate-950 ${borderColor} border rounded-full flex items-center justify-center text-[10px] shadow-[0_0_10px_rgba(0,0,0,0.5)] ${glowColor} hover:scale-125 transition-all cursor-pointer">
                        ${iconContent}
                      </div>`,
               iconSize: [24, 24],
@@ -247,6 +261,16 @@ export default function CyberMap({ passengers, searchQuery, onMapMove }: CyberMa
       
       if (onMapMove) onMapMove({ lat: airport.coords[0], lng: airport.coords[1] });
   };
+
+  const handleFlightClick = (flight: LiveFlight) => {
+    const latest = flightsRef.current.find(f => f.icao24 === flight.icao24) || flight;
+    setSelectedFlight(latest);
+    setSelectedAirport(null); 
+    setSelectedVenue(null);
+    
+    // Proactively scan for amenities near flight position
+    loadAmenities([latest.latitude, latest.longitude]);
+  };
   
   const highlightAirportZone = (airport: Airport, map: L.Map) => {
       if (!zoneLayerRef.current) return;
@@ -272,7 +296,6 @@ export default function CyberMap({ passengers, searchQuery, onMapMove }: CyberMa
 
   const toggleFullScreen = () => {
     setIsExpanded(!isExpanded);
-    // Give time for transition/DOM update before resizing map
     setTimeout(() => {
         mapRef.current?.invalidateSize();
     }, 100);
@@ -376,12 +399,7 @@ export default function CyberMap({ passengers, searchQuery, onMapMove }: CyberMa
 
             const marker = L.marker([flight.latitude, flight.longitude], { icon, zIndexOffset: 100 })
                 .addTo(mapRef.current!)
-                .on('click', () => {
-                    const latest = flightsRef.current.find(f => f.icao24 === flight.icao24) || flight;
-                    setSelectedFlight(latest);
-                    setSelectedAirport(null); 
-                    setSelectedVenue(null);
-                });
+                .on('click', () => handleFlightClick(flight));
 
             aircraftMarkersRef.current[flight.icao24] = marker;
         } else {
@@ -412,7 +430,7 @@ export default function CyberMap({ passengers, searchQuery, onMapMove }: CyberMa
               f.icao24.includes(searchQuery.toLowerCase())
           );
           if (target) {
-              setSelectedFlight(target);
+              handleFlightClick(target);
               if (mapRef.current) mapRef.current.setView([target.latitude, target.longitude], 13, { animate: true });
           }
       }
@@ -428,6 +446,7 @@ export default function CyberMap({ passengers, searchQuery, onMapMove }: CyberMa
     <div className={`${isExpanded ? 'fixed inset-0 w-screen h-screen z-[9999] rounded-none' : 'relative w-full h-[400px] lg:h-full rounded-lg border border-green-900/50 shadow-[0_0_40px_rgba(0,0,0,0.8)]'} bg-slate-950 overflow-hidden border-glow group transition-all duration-500`}>
       <div ref={containerRef} className="absolute inset-0 z-0 bg-black" />
       
+      {/* HUD Styles & Effects */}
       <style>{`
         @keyframes flow { to { stroke-dashoffset: -12; } }
         .trajectory-path { animation: flow 1s linear infinite; }
@@ -436,7 +455,54 @@ export default function CyberMap({ passengers, searchQuery, onMapMove }: CyberMa
              100% { transform: scale(2); opacity: 0; }
         }
         .animate-ping-slow { animation: ping-slow 3s cubic-bezier(0, 0, 0.2, 1) infinite; }
+        .tactical-grid {
+            background-image: 
+                linear-gradient(rgba(34, 197, 94, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(34, 197, 94, 0.05) 1px, transparent 1px);
+            background-size: 50px 50px;
+        }
       `}</style>
+
+      {/* Fullscreen HUD Overlays */}
+      <AnimatePresence>
+        {isExpanded && (
+          <>
+            <MotionDiv 
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }} 
+              className="absolute inset-0 tactical-grid pointer-events-none z-[5]"
+            />
+            
+            {/* Tactical Corners */}
+            <div className="absolute top-8 left-8 w-12 h-12 border-t-2 border-l-2 border-blue-500/40 pointer-events-none z-10" />
+            <div className="absolute top-8 right-8 w-12 h-12 border-t-2 border-r-2 border-blue-500/40 pointer-events-none z-10" />
+            <div className="absolute bottom-8 left-8 w-12 h-12 border-b-2 border-l-2 border-blue-500/40 pointer-events-none z-10" />
+            <div className="absolute bottom-8 right-8 w-12 h-12 border-b-2 border-r-2 border-blue-500/40 pointer-events-none z-10" />
+
+            {/* Tactical HUD Header */}
+            <MotionDiv 
+              initial={{ y: -50 }} 
+              animate={{ y: 0 }}
+              className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-8 px-6 py-2 bg-slate-950/80 border border-slate-700 rounded-full backdrop-blur-md z-20 shadow-2xl"
+            >
+              <div className="flex items-center gap-2">
+                <Activity className="w-4 h-4 text-emerald-400" />
+                <span className="text-xs font-mono font-bold text-slate-200">TRAFFIC: <span className="text-emerald-400">{flightsRef.current.length}</span></span>
+              </div>
+              <div className="h-4 w-px bg-slate-700" />
+              <div className="flex items-center gap-2">
+                <ShieldAlert className="w-4 h-4 text-yellow-400" />
+                <span className="text-xs font-mono font-bold text-slate-200">SECTOR: <span className="text-yellow-400">{selectedAirport?.code || 'SCANNING'}</span></span>
+              </div>
+              <div className="h-4 w-px bg-slate-700" />
+              <div className="flex items-center gap-2">
+                <Cpu className="w-4 h-4 text-blue-400" />
+                <span className="text-xs font-mono font-bold text-slate-200">SYSTEM: <span className="text-blue-400">READY</span></span>
+              </div>
+            </MotionDiv>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* Loading Overlay */}
       {loadingRadar && (
@@ -470,8 +536,8 @@ export default function CyberMap({ passengers, searchQuery, onMapMove }: CyberMa
          <div className="flex items-center gap-2">
             <button
                 onClick={toggleFullScreen}
-                className={`flex items-center gap-2 px-3 py-1.5 bg-slate-900/90 border border-slate-600 rounded-lg text-xs font-mono text-slate-200 hover:border-blue-500 hover:text-blue-400 hover:shadow-[0_0_15px_rgba(59,130,246,0.3)] transition-all backdrop-blur-md ${isExpanded ? 'bg-red-900/20 border-red-500/50 text-red-400' : ''}`}
-                title={isExpanded ? "Exit Fullscreen (Esc)" : "Fullscreen"}
+                className={`flex items-center gap-2 px-3 py-1.5 bg-slate-900/90 border border-slate-600 rounded-lg text-xs font-mono text-slate-200 hover:border-blue-500 hover:text-blue-400 hover:shadow-[0_0_15px_rgba(59,130,246,0.3)] transition-all backdrop-blur-md ${isExpanded ? 'bg-red-900/20 border-red-500/50 text-red-400 shadow-[0_0_20px_rgba(239,68,68,0.2)]' : ''}`}
+                title={isExpanded ? "Exit Fullscreen (Esc)" : "Fullscreen (F)"}
             >
                 {isExpanded ? (
                     <>
@@ -531,14 +597,6 @@ export default function CyberMap({ passengers, searchQuery, onMapMove }: CyberMa
                                 <Crosshair className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                             </button>
                         ))}
-                        {filteredAirports.length === 0 && (
-                            <div className="p-4 text-center text-[10px] text-slate-500 font-mono italic">
-                                NO SECTORS FOUND
-                            </div>
-                        )}
-                    </div>
-                    <div className="p-1 bg-slate-900 border-t border-slate-800 text-[9px] text-center text-slate-600 font-mono">
-                        {US_AIRPORTS.length} ACTIVE HUBS ONLINE
                     </div>
                 </MotionDiv>
             )}
@@ -546,7 +604,7 @@ export default function CyberMap({ passengers, searchQuery, onMapMove }: CyberMa
       </div>
 
       {/* --- CENTRAL HEADER / OVERLAY --- */}
-      <div className="absolute top-16 left-1/2 -translate-x-1/2 z-[500] pointer-events-none w-full max-w-sm px-4">
+      <div className="absolute top-20 left-1/2 -translate-x-1/2 z-[500] pointer-events-none w-full max-w-sm px-4">
         <AnimatePresence mode="wait">
             {selectedFlight ? (
                 <MotionDiv
@@ -554,7 +612,7 @@ export default function CyberMap({ passengers, searchQuery, onMapMove }: CyberMa
                     initial={{ y: -20, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
                     exit={{ y: -20, opacity: 0 }}
-                    className="pointer-events-auto bg-slate-900/90 border border-blue-500/50 backdrop-blur-md rounded-lg shadow-2xl overflow-hidden w-full"
+                    className="pointer-events-auto bg-slate-900/95 border border-blue-500/50 backdrop-blur-md rounded-lg shadow-2xl overflow-hidden w-full border-l-4"
                 >
                     <div className="px-4 py-2 bg-blue-950/40 border-b border-blue-900/30 flex justify-between items-center">
                          <div className="flex items-center gap-2">
@@ -586,7 +644,7 @@ export default function CyberMap({ passengers, searchQuery, onMapMove }: CyberMa
                     initial={{ y: -20, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
                     exit={{ y: -20, opacity: 0 }}
-                    className="pointer-events-auto bg-slate-900/90 border border-yellow-500/50 backdrop-blur-md rounded-lg shadow-2xl overflow-hidden w-full"
+                    className="pointer-events-auto bg-slate-900/95 border border-yellow-500/50 backdrop-blur-md rounded-lg shadow-2xl overflow-hidden w-full border-l-4"
                 >
                     <div className="px-4 py-2 bg-yellow-950/40 border-b border-yellow-900/30 flex justify-between items-center">
                         <div className="flex items-center gap-2">
@@ -604,8 +662,8 @@ export default function CyberMap({ passengers, searchQuery, onMapMove }: CyberMa
                                 <Search className="w-3 h-3" /> SCANNING AMENITIES...
                             </div>
                         ) : (
-                            <div className="text-[10px] font-mono text-slate-400">
-                                ZONE SECURE. {Object.keys(amenityMarkersRef.current).length} VENUES IDENTIFIED.
+                            <div className="text-[10px] font-mono text-slate-400 uppercase tracking-tighter">
+                                SECTOR SECURE. IDENTIFIED {Object.keys(amenityMarkersRef.current).length} ACTIVE AMENITY NODES.
                             </div>
                         )}
                     </div>
@@ -616,7 +674,7 @@ export default function CyberMap({ passengers, searchQuery, onMapMove }: CyberMa
                     initial={{ y: -20, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
                     exit={{ y: -20, opacity: 0 }}
-                    className="pointer-events-auto bg-slate-900/90 border border-purple-500/50 backdrop-blur-md rounded-lg shadow-2xl overflow-hidden w-full"
+                    className="pointer-events-auto bg-slate-900/95 border border-purple-500/50 backdrop-blur-md rounded-lg shadow-2xl overflow-hidden w-full border-l-4"
                 >
                     <div className="px-4 py-2 bg-purple-950/40 border-b border-purple-900/30 flex justify-between items-center">
                         <div className="flex items-center gap-2">
@@ -639,27 +697,46 @@ export default function CyberMap({ passengers, searchQuery, onMapMove }: CyberMa
         </AnimatePresence>
       </div>
 
-      {/* --- ZOOM CONTROLS --- */}
-      <div className="absolute bottom-20 right-4 z-[400] flex flex-col gap-1">
-         <button onClick={handleZoomIn} className="p-2 bg-slate-900/90 border border-slate-700 rounded-t-lg text-slate-300 hover:text-white hover:bg-slate-800 transition-colors">
-            <ZoomIn className="w-4 h-4" />
+      {/* --- ZOOM & TACTICAL CONTROLS --- */}
+      <div className="absolute bottom-16 right-4 z-[400] flex flex-col gap-1">
+         <button 
+           onClick={handleHome} 
+           className="p-2 bg-slate-900/90 border border-slate-700 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition-colors mb-2 shadow-lg"
+           title="Home (Recenter)"
+         >
+            <Home className="w-4 h-4" />
          </button>
-         <div className="h-px bg-slate-700 mx-2"></div>
-         <button onClick={handleZoomOut} className="p-2 bg-slate-900/90 border border-slate-700 rounded-b-lg text-slate-300 hover:text-white hover:bg-slate-800 transition-colors">
-            <ZoomOut className="w-4 h-4" />
-         </button>
+         
+         <div className="flex flex-col bg-slate-900/90 border border-slate-700 rounded-lg overflow-hidden shadow-lg">
+            <button onClick={handleZoomIn} className="p-2 text-slate-300 hover:text-white hover:bg-slate-800 transition-colors">
+                <ZoomIn className="w-4 h-4" />
+            </button>
+            <div className="h-px bg-slate-700 mx-2"></div>
+            <button onClick={handleZoomOut} className="p-2 text-slate-300 hover:text-white hover:bg-slate-800 transition-colors">
+                <ZoomOut className="w-4 h-4" />
+            </button>
+         </div>
       </div>
 
-      <div className="absolute bottom-4 left-4 z-[400] pointer-events-none text-green-600/60 font-mono text-[10px] bg-black/50 px-2 rounded backdrop-blur hidden sm:block">
-          <LocateFixed className="inline w-3 h-3 mr-1" />
-          GRID: {mapCenter[0].toFixed(2)} | {mapCenter[1].toFixed(2)}
+      {/* Bottom Grid Coordinates */}
+      <div className="absolute bottom-4 left-4 z-[400] pointer-events-none text-green-600/60 font-mono text-[10px] bg-black/60 px-3 py-1 rounded-full border border-green-900/30 backdrop-blur hidden sm:flex items-center gap-2">
+          <LocateFixed className="w-3 h-3 text-green-500" />
+          <span className="tracking-widest">GRID: {mapCenter[0].toFixed(4)} | {mapCenter[1].toFixed(4)}</span>
       </div>
 
-      <div className="absolute bottom-4 right-4 z-[400] pointer-events-none flex items-center gap-2 text-blue-400 text-[10px] font-mono uppercase animate-pulse">
-         <Radio className="w-3 h-3" /> LIVE FEED
+      {/* Live Status Indicator */}
+      <div className="absolute bottom-4 right-4 z-[400] pointer-events-none flex items-center gap-3 bg-black/60 px-3 py-1 rounded-full border border-blue-900/30 backdrop-blur">
+         <div className="flex items-center gap-2 text-blue-400 text-[10px] font-mono uppercase tracking-widest">
+            <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse shadow-[0_0_8px_#3b82f6]"></div>
+            LIVE_UPSTREAM
+         </div>
+         <div className="h-3 w-px bg-slate-700" />
+         <span className="text-[10px] font-mono text-slate-500">{new Date().toLocaleTimeString([], { hour12: false })}</span>
       </div>
 
-      <div className="scanlines z-[500] pointer-events-none opacity-30"></div>
+      {/* Aesthetic Overlays */}
+      <div className="scanlines z-[500] pointer-events-none opacity-20"></div>
+      {isExpanded && <div className="absolute inset-0 z-[600] pointer-events-none border-[12px] border-black/40 shadow-[inset_0_0_100px_rgba(0,0,0,0.8)]" />}
     </div>
   );
 }
