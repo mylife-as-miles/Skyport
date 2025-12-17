@@ -7,7 +7,17 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react()],
     server: {
-      host: true
+      host: true,
+      proxy: {
+        '/api/yelp': {
+          target: 'https://api.yelp.com/v3',
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/api\/yelp/, ''),
+          headers: {
+            Authorization: `Bearer ${env.YELP_API_KEY}`
+          }
+        }
+      }
     },
     build: {
       outDir: 'dist',

@@ -27,27 +27,42 @@ interface YelpBusiness {
 }
 
 export async function searchNearbyPlaces(lat: number, lng: number, category: string = 'food'): Promise<Venue[]> {
+    // Note: When running in Vite dev server with proxy, we don't strictly need the key here if the proxy handles it.
+    // However, if the proxy approach fails or we deploy elsewhere, we might need it.
+    // For the proxy setup in vite.config.ts, we use the relative path.
+
+    // Check if we are in a browser environment (which implies we should use the proxy)
+    const isBrowser = typeof window !== 'undefined';
     const apiKey = process.env.YELP_API_KEY;
 
-    if (!apiKey) {
-        console.warn("Yelp API Key missing, returning empty list (will trigger mock fallback).");
-        return [];
-    }
+    // If no key and not using proxy (or if proxy is not configured to inject headers), we can't fetch.
+    // But since we configured the proxy to inject the header, we can just fetch to the proxy.
 
     try {
         const radius = 2000; // 2km radius (~1.2 miles)
         const limit = 10;
         
-        const response = await fetch(
-            `https://api.yelp.com/v3/businesses/search?latitude=${lat}&longitude=${lng}&term=${category}&radius=${radius}&sort_by=rating&limit=${limit}`,
-            {
-                headers: {
-                    'Authorization': `Bearer ${apiKey}`,
-                    'Content-Type': 'application/json',
-                },
-                next: { revalidate: 3600 } // Cache for 1 hour
-            } as NextFetchRequestInit
-        );
+        let url = `https://api.yelp.com/v3/businesses/search?latitude=${lat}&longitude=${lng}&term=${category}&radius=${radius}&sort_by=rating&limit=${limit}`;
+        let headers: HeadersInit = {
+            'Content-Type': 'application/json',
+        };
+
+        if (isBrowser) {
+            // Use the proxy path
+            url = `/api/yelp/businesses/search?latitude=${lat}&longitude=${lng}&term=${category}&radius=${radius}&sort_by=rating&limit=${limit}`;
+            // The proxy in vite.config.ts injects the Authorization header
+        } else if (apiKey) {
+            // Server-side or direct usage (if CORS allows or SSR)
+            headers['Authorization'] = `Bearer ${apiKey}`;
+        } else {
+             console.warn("Yelp API Key missing and not in browser context, returning empty list.");
+             return [];
+        }
+
+        const response = await fetch(url, {
+            headers,
+            next: { revalidate: 3600 } // Cache for 1 hour
+        } as NextFetchRequestInit);
 
         if (!response.ok) {
             throw new Error(`Yelp API Error: ${response.status}`);
@@ -88,6 +103,9 @@ interface YelpAIResponse {
 }
 
 export async function askYelpAI(query: string, chatId?: string, lat?: number, lng?: number): Promise<{ content: string; chatId: string }> {
+  // Similar logic for Yelp AI if needed, but the user asked specifically about "Nearby Recommendations" which usually maps to searchNearbyPlaces.
+  // We'll leave this as is for now or update if needed.
+
   const apiKey = process.env.YELP_API_KEY;
 
   if (!apiKey) {
