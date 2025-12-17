@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Radio, LocateFixed, Search, Radar, MapPin, X, Plane, Globe, ChevronDown, Crosshair, Utensils, Maximize2, Minimize2, ZoomIn, ZoomOut, Home, Activity, ShieldAlert, Cpu } from 'lucide-react';
+import { Radio, LocateFixed, Search, Radar, MapPin, X, Plane, Globe, ChevronDown, Crosshair, Utensils, Maximize2, Minimize2, ZoomIn, ZoomOut, Home, Activity, ShieldAlert, Cpu, ArrowUpRight, ArrowDownRight, Flame, Clock } from 'lucide-react';
 import L from 'leaflet';
 import { PassengerGroup, LiveFlight, Venue, MapCommand } from '../types';
 import { fetchLiveFlights } from '../services/openSky';
@@ -45,6 +45,9 @@ export default function CyberMap({ passengers, searchQuery, onMapMove, aiCommand
   const [isExpanded, setIsExpanded] = useState(false);
   const [radarTick, setRadarTick] = useState(0);
   const [aiOverrideActive, setAiOverrideActive] = useState(false);
+
+  // Traffic Stats
+  const [trafficStats, setTrafficStats] = useState({ arrivals: 0, departures: 0, density: 0 });
   
   // Navigation State
   const [mapCenter, setMapCenter] = useState<[number, number]>(INITIAL_CENTER as [number, number]);
@@ -212,6 +215,42 @@ export default function CyberMap({ passengers, searchQuery, onMapMove, aiCommand
     mapRef.current.flyTo(INITIAL_CENTER as [number, number], 12, { animate: true });
   };
 
+  // --- TRAFFIC STATS CALCULATION ---
+  const calculateTrafficStats = (flights: LiveFlight[], center: [number, number]) => {
+      let arr = 0;
+      let dep = 0;
+
+      flights.forEach(f => {
+          if (f.on_ground) return; // Ignore ground traffic for ARR/DEP
+
+          // Basic bearing calculation from plane to center
+          const dLon = (center[1] - f.longitude) * Math.PI / 180;
+          const lat1 = f.latitude * Math.PI / 180;
+          const lat2 = center[0] * Math.PI / 180;
+
+          const y = Math.sin(dLon) * Math.cos(lat2);
+          const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
+          let bearing = Math.atan2(y, x) * 180 / Math.PI;
+          bearing = (bearing + 360) % 360; // Normalize to 0-360
+
+          // Difference between plane heading and bearing to center
+          let diff = Math.abs(f.true_track - bearing);
+          if (diff > 180) diff = 360 - diff;
+
+          if (diff < 60) {
+              arr++;
+          } else if (diff > 120) {
+              dep++;
+          }
+      });
+
+      setTrafficStats({
+          arrivals: arr,
+          departures: dep,
+          density: flights.length
+      });
+  };
+
   // --- 2. FETCH FLIGHT DATA LOOP ---
   useEffect(() => {
     let isMounted = true;
@@ -223,6 +262,10 @@ export default function CyberMap({ passengers, searchQuery, onMapMove, aiCommand
             flightsRef.current = data; 
             setLoadingRadar(false);
             setRadarTick(t => t + 1); // Signal that we have fresh data for markers
+
+            // Update stats
+            calculateTrafficStats(data, mapCenter);
+
         } catch (e) {
             console.error("Flight fetch failed", e);
         }
@@ -569,19 +612,41 @@ export default function CyberMap({ passengers, searchQuery, onMapMove, aiCommand
               animate={{ y: 0 }}
               className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-8 px-6 py-2 bg-slate-950/80 border border-slate-700 rounded-full backdrop-blur-md z-20 shadow-2xl"
             >
+              {/* ARRIVALS */}
               <div className="flex items-center gap-2">
-                <Activity className="w-4 h-4 text-emerald-400" />
-                <span className="text-xs font-mono font-bold text-slate-200">TRAFFIC: <span className="text-emerald-400">{flightsRef.current.length}</span></span>
+                <ArrowDownRight className="w-4 h-4 text-emerald-400" />
+                <span className="text-xs font-mono font-bold text-slate-200">ARR: <span className="text-emerald-400">{trafficStats.arrivals}</span></span>
               </div>
               <div className="h-4 w-px bg-slate-700" />
+
+              {/* DEPARTURES */}
               <div className="flex items-center gap-2">
-                <ShieldAlert className="w-4 h-4 text-yellow-400" />
-                <span className="text-xs font-mono font-bold text-slate-200">SECTOR: <span className="text-yellow-400">{selectedAirport?.code || 'SCANNING'}</span></span>
+                <ArrowUpRight className="w-4 h-4 text-blue-400" />
+                <span className="text-xs font-mono font-bold text-slate-200">DEP: <span className="text-blue-400">{trafficStats.departures}</span></span>
               </div>
               <div className="h-4 w-px bg-slate-700" />
+
+              {/* DENSITY METER */}
               <div className="flex items-center gap-2">
-                <Cpu className="w-4 h-4 text-blue-400" />
-                <span className="text-xs font-mono font-bold text-slate-200">SYSTEM: <span className="text-blue-400">READY</span></span>
+                <Flame className={`w-4 h-4 ${trafficStats.density > 20 ? 'text-red-500' : trafficStats.density > 10 ? 'text-yellow-500' : 'text-slate-400'}`} />
+                <div className="flex flex-col gap-0.5">
+                    <span className="text-[9px] font-mono font-bold text-slate-400 leading-none">DENSITY</span>
+                    <div className="flex gap-0.5">
+                        <div className={`w-3 h-1 rounded-full ${trafficStats.density > 0 ? 'bg-emerald-500' : 'bg-slate-800'}`}></div>
+                        <div className={`w-3 h-1 rounded-full ${trafficStats.density > 10 ? 'bg-yellow-500' : 'bg-slate-800'}`}></div>
+                        <div className={`w-3 h-1 rounded-full ${trafficStats.density > 20 ? 'bg-red-500' : 'bg-slate-800'}`}></div>
+                    </div>
+                </div>
+              </div>
+              <div className="h-4 w-px bg-slate-700" />
+
+              {/* PEAK FORECAST */}
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4 text-purple-400" />
+                <div className="flex flex-col">
+                    <span className="text-[9px] font-mono text-slate-400 leading-none">EXP PEAK</span>
+                    <span className="text-[10px] font-mono font-bold text-purple-300">18:00 LOC</span>
+                </div>
               </div>
             </MotionDiv>
           </>
