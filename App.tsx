@@ -4,7 +4,7 @@ import CyberMap from './components/CyberMap';
 import ChatInterface from './components/ChatInterface';
 import PlaceCard from './components/PlaceCard';
 import WeatherWidget from './components/WeatherWidget';
-import { ChatMessage, Venue } from './types';
+import { ChatMessage, Venue, MapCommand } from './types';
 import { sendUserMessage } from './services/aiService';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -28,6 +28,9 @@ export default function App() {
   const [currentLocation, setCurrentLocation] = useState<{lat: number, lng: number} | undefined>(undefined);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  // AI Map Control
+  const [latestMapCommand, setLatestMapCommand] = useState<MapCommand | undefined>(undefined);
+
   const handleSendMessage = async (text: string) => {
     // Add User Message
     const userMsg: ChatMessage = {
@@ -47,6 +50,11 @@ export default function App() {
         // If the AI found attachments (places), update the recommendation panel
         if (response.attachments && response.attachments.length > 0) {
             setRecommendations(response.attachments);
+        }
+
+        // If the AI sent a map command, update the state to trigger CyberMap
+        if (response.command) {
+            setLatestMapCommand(response.command);
         }
     } catch (e) {
         console.error(e);
@@ -161,6 +169,7 @@ export default function App() {
                  passengers={[]} 
                  searchQuery={globalSearchQuery}
                  onMapMove={setCurrentLocation}
+                 aiCommand={latestMapCommand}
                />
                
                {/* Overlay Title */}

@@ -1,4 +1,4 @@
-import { ChatMessage, Venue } from '../types';
+import { ChatMessage, Venue, MapCommand } from '../types';
 import { searchNearbyPlaces } from '../app/actions/yelp';
 import { GoogleGenAI } from "@google/genai";
 
@@ -63,6 +63,7 @@ function generateMockVenues(lat: number, lng: number): Venue[] {
 export async function sendUserMessage(text: string, location?: { lat: number, lng: number }): Promise<ChatMessage> {
   let content = '';
   let attachments: Venue[] = [];
+  let command: MapCommand | undefined;
   
   if (!ai || apiKey === 'mock_key') {
       // Return a friendly offline message if AI is not configured
@@ -92,17 +93,53 @@ export async function sendUserMessage(text: string, location?: { lat: number, ln
         Your goal is to assist stranded passengers and flight crews. 
         Be concise, professional, and high-tech in your tone. 
         Current location context: ${location ? `Lat: ${location.lat}, Lng: ${location.lng}` : 'Unknown'}.
+
+        **CAPABILITIES:**
+        1. You can control the map interface. To do so, output a valid JSON block at the very end of your response.
+        2. To Move the Map: {"type": "FLY_TO", "target": {"lat": 40.7128, "lng": -74.0060, "label": "New York"}}
+        3. To Scan for Amenities: {"type": "SCAN_AREA", "query": "hotels"} (Use this if the user asks for places, but try to move the map first if a location is mentioned).
+
+        If the user mentions a specific city or airport code (e.g., JFK, London, Tokyo), GENERATE the coordinates for that location in the JSON block.
         If the user asks for places to stay, eat, or wait, mention that you are scanning the local grid for options.`
       }
     });
 
-    content = response.text || "Neural link stable. Awaiting further commands.";
+    const rawText = response.text || "Neural link stable. Awaiting further commands.";
 
+    // Attempt to parse JSON command from the end of the response
+    // Regex to find the last JSON block
+    const jsonMatch = rawText.match(/\{[\s\S]*\}$/);
+    if (jsonMatch) {
+        try {
+            const potentialCommand = JSON.parse(jsonMatch[0]);
+            if (potentialCommand.type === 'FLY_TO' || potentialCommand.type === 'SCAN_AREA') {
+                command = potentialCommand;
+                // Remove the JSON from the displayed text
+                content = rawText.replace(jsonMatch[0], '').trim();
+            } else {
+                content = rawText;
+            }
+        } catch (e) {
+            console.warn("Failed to parse AI command JSON", e);
+            content = rawText;
+        }
+    } else {
+        content = rawText;
+    }
+
+    // Fallback: If no explicit JSON command but keywords exist, trigger legacy behavior or infer command
     const lowerText = text.toLowerCase();
     const triggers = ['food', 'eat', 'drink', 'stay', 'hotel', 'cafe', 'coffee', 'bar', 'lounge', 'where', 'find', 'near'];
-    if (triggers.some(t => lowerText.includes(t)) && location) {
+
+    // If command is explicitly SCAN_AREA, execute fetch
+    if (command?.type === 'SCAN_AREA' && location) {
+         attachments = await fetchAmenities(location.lat, location.lng);
+    }
+    // Legacy trigger if no command found
+    else if (!command && triggers.some(t => lowerText.includes(t)) && location) {
         attachments = await fetchAmenities(location.lat, location.lng);
     }
+
   } catch (e) {
     console.error("Gemini AI Service Error", e);
     content = "Neural link interrupted. System is operating in restricted mode. Please check local terminal environment variables.";
@@ -113,6 +150,7 @@ export async function sendUserMessage(text: string, location?: { lat: number, ln
     role: 'assistant',
     content,
     timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    attachments
+    attachments,
+    command
   };
 }
