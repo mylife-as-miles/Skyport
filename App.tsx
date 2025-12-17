@@ -86,6 +86,20 @@ export default function App() {
       }
   };
 
+  const handlePlaceSelect = (venue: Venue) => {
+      if (venue.coordinates) {
+          setLatestMapCommand({
+              type: 'FLY_TO',
+              target: {
+                  lat: venue.coordinates.lat,
+                  lng: venue.coordinates.lng,
+                  label: venue.name
+              },
+              zoom: 16
+          });
+      }
+  };
+
   const handleFlightSearch = (e: React.FormEvent) => {
       e.preventDefault();
       setGlobalSearchQuery(searchInput);
@@ -223,7 +237,7 @@ export default function App() {
                                    animate={{ opacity: 1, y: 0 }}
                                    transition={{ delay: i * 0.1 }}
                                  >
-                                     <PlaceCard venue={venue} onClick={() => console.log('Nav to', venue.name)} />
+                                     <PlaceCard venue={venue} onClick={() => handlePlaceSelect(venue)} />
                                  </MotionDiv>
                              ))}
                          </AnimatePresence>
