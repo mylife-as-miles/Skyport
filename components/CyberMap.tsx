@@ -16,9 +16,10 @@ interface CyberMapProps {
   searchQuery?: string;
   onMapMove?: (center: { lat: number, lng: number }) => void;
   aiCommand?: MapCommand;
+  onFlightSelect?: (flight: LiveFlight) => void;
 }
 
-export default function CyberMap({ passengers, searchQuery, onMapMove, aiCommand }: CyberMapProps) {
+export default function CyberMap({ passengers, searchQuery, onMapMove, aiCommand, onFlightSelect }: CyberMapProps) {
   const mapRef = useRef<L.Map | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   
@@ -377,6 +378,10 @@ export default function CyberMap({ passengers, searchQuery, onMapMove, aiCommand
     // Proactively scan for amenities near flight position
     if (latest.latitude && latest.longitude) {
         loadAmenities([latest.latitude, latest.longitude]);
+    }
+
+    if (onFlightSelect) {
+        onFlightSelect(latest);
     }
   };
   

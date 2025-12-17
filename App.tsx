@@ -4,7 +4,7 @@ import CyberMap from './components/CyberMap';
 import ChatInterface from './components/ChatInterface';
 import PlaceCard from './components/PlaceCard';
 import WeatherWidget from './components/WeatherWidget';
-import { ChatMessage, Venue, MapCommand } from './types';
+import { ChatMessage, Venue, MapCommand, LiveFlight } from './types';
 import { sendUserMessage } from './services/aiService';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -61,6 +61,29 @@ export default function App() {
     } finally {
         setIsTyping(false);
     }
+  };
+
+  const handleFlightSelect = async (flight: LiveFlight) => {
+      // Construct a prompt for the AI to analyze the selected flight
+      const prompt = `Analyze flight ${flight.callsign} (ICAO: ${flight.icao24}).
+      Status: ${flight.status || 'Unknown'}.
+      Altitude: ${Math.round(flight.altitude)}m.
+      Speed: ${Math.round(flight.velocity)}m/s.
+      Heading: ${Math.round(flight.true_track)}°.
+      Vertical Rate: ${flight.vertical_rate || 0}m/s.
+
+      Explain its likely route (if inferable from heading/location), current behavior (climbing/descending), and any signs of holding patterns or diversion based on this telemetry. Keep it brief and "tactical".`;
+
+      // We send this as a system/hidden prompt, but display the result as an assistant message.
+      setIsTyping(true);
+      try {
+          const response = await sendUserMessage(prompt, { lat: flight.latitude, lng: flight.longitude });
+          setMessages(prev => [...prev, response]);
+      } catch (e) {
+          console.error("Flight analysis failed", e);
+      } finally {
+          setIsTyping(false);
+      }
   };
 
   const handleFlightSearch = (e: React.FormEvent) => {
@@ -170,6 +193,7 @@ export default function App() {
                  searchQuery={globalSearchQuery}
                  onMapMove={setCurrentLocation}
                  aiCommand={latestMapCommand}
+                 onFlightSelect={handleFlightSelect}
                />
                
                {/* Overlay Title */}
