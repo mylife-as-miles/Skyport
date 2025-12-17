@@ -171,7 +171,7 @@ export default function CyberMap({ passengers, searchQuery, onMapMove }: CyberMa
     };
 
     fetchNow();
-    const interval = setInterval(fetchNow, 8000);
+    const interval = setInterval(fetchNow, 15000);
     return () => { isMounted = false; clearInterval(interval); };
   }, [mapCenter]);
 

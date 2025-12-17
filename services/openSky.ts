@@ -3,8 +3,27 @@ import { LiveFlight } from '../types';
 // Default to ORD if no center provided
 const DEFAULT_CENTER = { lat: 41.9742, lng: -87.9073 };
 
+// Cache state
+let lastFetchTime = 0;
+let cachedFlights: LiveFlight[] = [];
+let isRateLimited = false;
+const CACHE_DURATION = 15000; // 15 seconds cache to be safe
+const ERROR_BACKOFF = 60000; // 1 minute backoff on error
+
 export async function fetchLiveFlights(center?: { lat: number; lng: number }): Promise<LiveFlight[]> {
   const c = center || DEFAULT_CENTER;
+  const now = Date.now();
+
+  // If we are rate limited or within cache duration, return cached or mock
+  if (isRateLimited && now - lastFetchTime < ERROR_BACKOFF) {
+      // console.log('Returning mock due to rate limit');
+      return generateMockFlights(c.lat, c.lng);
+  }
+
+  if (now - lastFetchTime < CACHE_DURATION && cachedFlights.length > 0) {
+      // console.log('Returning cached flights');
+      return cachedFlights;
+  }
   
   // Calculate dynamic BBOX (~0.7 degree window)
   const bbox = {
@@ -18,22 +37,34 @@ export async function fetchLiveFlights(center?: { lat: number; lng: number }): P
     // OpenSky Network API for anonymous users (limit: 400 requests/day, 10s resolution)
     // We use a timeout to fail fast if the API hangs or CORS blocks it
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3000);
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
 
     const url = `https://opensky-network.org/api/states/all?lamin=${bbox.lamin}&lomin=${bbox.lomin}&lamax=${bbox.lamax}&lomax=${bbox.lomax}`;
     
     const response = await fetch(url, { signal: controller.signal });
     clearTimeout(timeoutId);
 
+    if (response.status === 429) {
+        console.warn("OpenSky Rate Limit Exceeded. Switching to simulation mode.");
+        isRateLimited = true;
+        lastFetchTime = now;
+        return generateMockFlights(c.lat, c.lng);
+    }
+
     if (!response.ok) {
       throw new Error(`OpenSky API Error: ${response.status}`);
     }
 
     const data = await response.json();
+    lastFetchTime = now;
+    isRateLimited = false; // Reset if successful
     
-    if (!data.states) return generateMockFlights(c.lat, c.lng);
+    if (!data.states) {
+        cachedFlights = generateMockFlights(c.lat, c.lng);
+        return cachedFlights;
+    }
 
-    return data.states.map((s: any) => ({
+    const flights = data.states.map((s: any) => ({
       icao24: s[0],
       callsign: s[1].trim() || 'N/A',
       longitude: s[5],
@@ -44,8 +75,13 @@ export async function fetchLiveFlights(center?: { lat: number; lng: number }): P
       altitude: s[7] || 0
     })).slice(0, 50); // Limit to 50 planes for performance
 
+    cachedFlights = flights;
+    return flights;
+
   } catch (error) {
-    // console.warn("OpenSky API unavailable, using simulation data.", error);
+    console.warn("OpenSky API unavailable, using simulation data.", error);
+    // On network error, back off a bit but don't set permanent rate limit flag
+    lastFetchTime = now;
     return generateMockFlights(c.lat, c.lng);
   }
 }
