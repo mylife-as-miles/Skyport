@@ -55,5 +55,17 @@ export const US_AIRPORTS: Airport[] = [
     { code: 'CVG', name: "Cincinnati/Northern Kentucky Intl", city: "Cincinnati", state: "OH", coords: [39.0461, -84.6621] },
     { code: 'MCI', name: "Kansas City Intl", city: "Kansas City", state: "MO", coords: [39.2976, -94.7139] },
     { code: 'RSW', name: "Southwest Florida Intl", city: "Fort Myers", state: "FL", coords: [26.5362, -81.7552] },
-    { code: 'JAX', name: "Jacksonville Intl", city: "Jacksonville", state: "FL", coords: [30.4941, -81.6879] }
+    { code: 'JAX', name: "Jacksonville Intl", city: "Jacksonville", state: "FL", coords: [30.4941, -81.6879] },
+
+    // International
+    { code: 'LHR', name: "London Heathrow", city: "London", state: "UK", coords: [51.4700, -0.4543] },
+    { code: 'CDG', name: "Charles de Gaulle", city: "Paris", state: "FR", coords: [49.0097, 2.5479] },
+    { code: 'HND', name: "Tokyo Haneda", city: "Tokyo", state: "JP", coords: [35.5494, 139.7798] },
+    { code: 'DXB', name: "Dubai Intl", city: "Dubai", state: "UAE", coords: [25.2532, 55.3657] },
+    { code: 'LOS', name: "Murtala Muhammed Intl", city: "Lagos", state: "NG", coords: [6.5774, 3.3210] },
+    { code: 'SIN', name: "Singapore Changi", city: "Singapore", state: "SG", coords: [1.3644, 103.9915] },
+    { code: 'FRA', name: "Frankfurt", city: "Frankfurt", state: "DE", coords: [50.0379, 8.5622] },
+    { code: 'AMS', name: "Schiphol", city: "Amsterdam", state: "NL", coords: [52.3105, 4.7683] },
+    { code: 'IST', name: "Istanbul", city: "Istanbul", state: "TR", coords: [41.2753, 28.7519] },
+    { code: 'SYD', name: "Sydney Kingsford Smith", city: "Sydney", state: "AU", coords: [-33.9399, 151.1753] }
 ];
