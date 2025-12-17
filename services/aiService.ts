@@ -2,7 +2,15 @@ import { ChatMessage, Venue } from '../types';
 import { searchNearbyPlaces } from '../app/actions/yelp';
 import { GoogleGenAI } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Initialize with a mock key if missing to prevent crash, but warn
+const apiKey = process.env.API_KEY || 'mock_key';
+let ai: GoogleGenAI | null = null;
+
+try {
+    ai = new GoogleGenAI({ apiKey });
+} catch (error) {
+    console.warn("Failed to initialize GoogleGenAI:", error);
+}
 
 // Realistic names for fallback mock data generation
 const VENUE_PREFIXES = ['Sky', 'Cloud', 'Aero', 'Jet', 'Terminal', 'Runway', 'Pilot', 'Horizon', 'Voyager', 'Navigator'];
@@ -56,9 +64,28 @@ export async function sendUserMessage(text: string, location?: { lat: number, ln
   let content = '';
   let attachments: Venue[] = [];
   
+  if (!ai || apiKey === 'mock_key') {
+      // Return a friendly offline message if AI is not configured
+      content = "I am currently offline or missing my API key. Please check your configuration. I can still track flights and show nearby places if you select an airport.";
+
+      // Basic keyword matching for demo purposes
+      const lowerText = text.toLowerCase();
+      if (location && (lowerText.includes('food') || lowerText.includes('hotel'))) {
+          attachments = await fetchAmenities(location.lat, location.lng);
+      }
+
+      return {
+        id: Math.random().toString(36).substr(2, 9),
+        role: 'assistant',
+        content,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        attachments
+      };
+  }
+
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-2.0-flash-exp', // Updated model
       contents: text,
       config: {
         systemInstruction: `You are SkyPort AI, a professional enterprise airline crisis management assistant. 
