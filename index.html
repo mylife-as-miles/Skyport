@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SkyPort AI | Travel Assistant</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    
+    <style>
+      body {
+        font-family: 'Inter', sans-serif;
+        background-color: #000000;
+        color: #f8fafc;
+      }
+      .font-mono {
+        font-family: 'JetBrains Mono', monospace;
+      }
+
+      /* Cyberpunk Scrollbar */
+      ::-webkit-scrollbar {
+        width: 8px;
+        background: #000;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #15803d; /* green-700 */
+        border-radius: 2px;
+        border: 1px solid #000;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #22c55e; /* green-500 */
+      }
+
+      /* CRT Scanline Effect */
+      .scanlines {
+        background: linear-gradient(
+          to bottom,
+          rgba(255,255,255,0),
+          rgba(255,255,255,0) 50%,
+          rgba(0,0,0,0.2) 50%,
+          rgba(0,0,0,0.2)
+        );
+        background-size: 100% 4px;
+        position: absolute;
+        top: 0; left: 0; right: 0; bottom: 0;
+        pointer-events: none;
+        z-index: 50;
+        opacity: 0.6;
+      }
+
+      /* Screen Flicker Animation */
+      @keyframes flicker {
+        0% { opacity: 0.97; }
+        5% { opacity: 0.95; }
+        10% { opacity: 0.9; }
+        15% { opacity: 0.95; }
+        20% { opacity: 0.99; }
+        50% { opacity: 0.95; }
+        80% { opacity: 0.9; }
+        100% { opacity: 0.97; }
+      }
+
+      .crt-flicker {
+        animation: flicker 0.15s infinite;
+      }
+
+      /* Hacker Text Glow */
+      .text-glow {
+        text-shadow: 0 0 5px rgba(34, 197, 94, 0.7);
+      }
+
+      .border-glow {
+        box-shadow: 0 0 10px rgba(34, 197, 94, 0.1), inset 0 0 20px rgba(34, 197, 94, 0.05);
+      }
+      
+      .text-shadow-glow {
+        text-shadow: 0 0 10px rgba(34, 197, 94, 0.5);
+      }
+      
+      /* Leaflet Customization */
+      .leaflet-container {
+        background: #020617 !important;
+      }
+      .leaflet-popup-content-wrapper {
+        background: rgba(0, 0, 0, 0.9) !important;
+        border: 1px solid #22c55e;
+        color: #fff !important;
+        font-family: 'JetBrains Mono', monospace;
+        border-radius: 4px !important;
+      }
+      .leaflet-popup-tip {
+        background: #22c55e !important;
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "react": "https://esm.sh/react@^19.2.3",
+    "lucide-react": "https://esm.sh/lucide-react@^0.561.0",
+    "framer-motion": "https://esm.sh/framer-motion@^12.23.26",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "leaflet": "https://esm.sh/leaflet@1.9.4"
+  }
+}
+</script>
+</head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>

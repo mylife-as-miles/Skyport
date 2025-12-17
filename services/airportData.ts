@@ -1,0 +1,59 @@
+export interface Airport {
+    code: string;
+    name: string;
+    coords: [number, number];
+    city: string;
+    state: string;
+}
+
+export const US_AIRPORTS: Airport[] = [
+    { code: 'ATL', name: "Hartsfield-Jackson Intl", city: "Atlanta", state: "GA", coords: [33.6407, -84.4277] },
+    { code: 'LAX', name: "Los Angeles Intl", city: "Los Angeles", state: "CA", coords: [33.9416, -118.4085] },
+    { code: 'ORD', name: "O'Hare Intl", city: "Chicago", state: "IL", coords: [41.9742, -87.9073] },
+    { code: 'DFW', name: "Dallas/Fort Worth Intl", city: "Dallas-Fort Worth", state: "TX", coords: [32.8998, -97.0403] },
+    { code: 'DEN', name: "Denver Intl", city: "Denver", state: "CO", coords: [39.8561, -104.6737] },
+    { code: 'JFK', name: "John F. Kennedy Intl", city: "New York", state: "NY", coords: [40.6413, -73.7781] },
+    { code: 'SFO', name: "San Francisco Intl", city: "San Francisco", state: "CA", coords: [37.6188, -122.3758] },
+    { code: 'SEA', name: "Seattle-Tacoma Intl", city: "Seattle", state: "WA", coords: [47.4502, -122.3088] },
+    { code: 'LAS', name: "Harry Reid Intl", city: "Las Vegas", state: "NV", coords: [36.0840, -115.1537] },
+    { code: 'MCO', name: "Orlando Intl", city: "Orlando", state: "FL", coords: [28.4312, -81.3081] },
+    { code: 'EWR', name: "Newark Liberty Intl", city: "Newark", state: "NJ", coords: [40.6895, -74.1745] },
+    { code: 'CLT', name: "Charlotte Douglas Intl", city: "Charlotte", state: "NC", coords: [35.2144, -80.9473] },
+    { code: 'PHX', name: "Phoenix Sky Harbor Intl", city: "Phoenix", state: "AZ", coords: [33.4352, -112.0101] },
+    { code: 'IAH', name: "George Bush Intercontinental", city: "Houston", state: "TX", coords: [29.9902, -95.3368] },
+    { code: 'MIA', name: "Miami Intl", city: "Miami", state: "FL", coords: [25.7959, -80.2870] },
+    { code: 'BOS', name: "Logan Intl", city: "Boston", state: "MA", coords: [42.3656, -71.0096] },
+    { code: 'MSP', name: "Minneapolis-St. Paul Intl", city: "Minneapolis", state: "MN", coords: [44.8848, -93.2223] },
+    { code: 'DTW', name: "Detroit Metro Wayne County", city: "Detroit", state: "MI", coords: [42.2121, -83.3533] },
+    { code: 'FLL', name: "Fort Lauderdale-Hollywood Intl", city: "Fort Lauderdale", state: "FL", coords: [26.0742, -80.1506] },
+    { code: 'PHL', name: "Philadelphia Intl", city: "Philadelphia", state: "PA", coords: [39.8729, -75.2437] },
+    { code: 'LGA', name: "LaGuardia", city: "New York", state: "NY", coords: [40.7769, -73.8740] },
+    { code: 'BWI', name: "Baltimore/Washington Intl", city: "Baltimore", state: "MD", coords: [39.1774, -76.6684] },
+    { code: 'SLC', name: "Salt Lake City Intl", city: "Salt Lake City", state: "UT", coords: [40.7899, -111.9791] },
+    { code: 'SAN', name: "San Diego Intl", city: "San Diego", state: "CA", coords: [32.7338, -117.1933] },
+    { code: 'IAD', name: "Washington Dulles Intl", city: "Washington", state: "DC", coords: [38.9531, -77.4565] },
+    { code: 'DCA', name: "Ronald Reagan Washington National", city: "Washington", state: "DC", coords: [38.8512, -77.0402] },
+    { code: 'MDW', name: "Chicago Midway Intl", city: "Chicago", state: "IL", coords: [41.7868, -87.7522] },
+    { code: 'TPA', name: "Tampa Intl", city: "Tampa", state: "FL", coords: [27.9772, -82.5309] },
+    { code: 'PDX', name: "Portland Intl", city: "Portland", state: "OR", coords: [45.5898, -122.5951] },
+    { code: 'HNL', name: "Daniel K. Inouye Intl", city: "Honolulu", state: "HI", coords: [21.3245, -157.9251] },
+    { code: 'STL', name: "St. Louis Lambert Intl", city: "St. Louis", state: "MO", coords: [38.7472, -90.3614] },
+    { code: 'BNA', name: "Nashville Intl", city: "Nashville", state: "TN", coords: [36.1263, -86.6774] },
+    { code: 'AUS', name: "Austin-Bergstrom Intl", city: "Austin", state: "TX", coords: [30.1975, -97.6664] },
+    { code: 'HOU', name: "William P. Hobby", city: "Houston", state: "TX", coords: [29.6454, -95.2788] },
+    { code: 'DAL', name: "Dallas Love Field", city: "Dallas", state: "TX", coords: [32.8481, -96.8512] },
+    { code: 'OAK', name: "Oakland Intl", city: "Oakland", state: "CA", coords: [37.7213, -122.2207] },
+    { code: 'SMF', name: "Sacramento Intl", city: "Sacramento", state: "CA", coords: [38.6954, -121.5908] },
+    { code: 'MSY', name: "Louis Armstrong New Orleans Intl", city: "New Orleans", state: "LA", coords: [29.9911, -90.2592] },
+    { code: 'RDU', name: "Raleigh-Durham Intl", city: "Raleigh", state: "NC", coords: [35.8801, -78.7884] },
+    { code: 'SJC', name: "Norman Y. Mineta San Jose Intl", city: "San Jose", state: "CA", coords: [37.3619, -121.9290] },
+    { code: 'SNA', name: "John Wayne", city: "Santa Ana", state: "CA", coords: [33.6762, -117.8674] },
+    { code: 'SAT', name: "San Antonio Intl", city: "San Antonio", state: "TX", coords: [29.5312, -98.4683] },
+    { code: 'CLE', name: "Cleveland Hopkins Intl", city: "Cleveland", state: "OH", coords: [41.4093, -81.8547] },
+    { code: 'IND', name: "Indianapolis Intl", city: "Indianapolis", state: "IN", coords: [39.7172, -86.2946] },
+    { code: 'PIT', name: "Pittsburgh Intl", city: "Pittsburgh", state: "PA", coords: [40.4914, -80.2329] },
+    { code: 'CVG', name: "Cincinnati/Northern Kentucky Intl", city: "Cincinnati", state: "OH", coords: [39.0461, -84.6621] },
+    { code: 'MCI', name: "Kansas City Intl", city: "Kansas City", state: "MO", coords: [39.2976, -94.7139] },
+    { code: 'RSW', name: "Southwest Florida Intl", city: "Fort Myers", state: "FL", coords: [26.5362, -81.7552] },
+    { code: 'JAX', name: "Jacksonville Intl", city: "Jacksonville", state: "FL", coords: [30.4941, -81.6879] }
+];

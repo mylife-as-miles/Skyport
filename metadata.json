@@ -1,0 +1,5 @@
+{
+  "name": "SkyPort AI",
+  "description": "Real-time AI Travel Assistant for flight tracking and local recommendations.",
+  "requestFramePermissions": []
+}
