@@ -1,13 +1,15 @@
 import { ChatMessage, Venue } from '../types';
-import { searchNearbyPlaces, askYelpAI } from '../app/actions/yelp';
+import { searchNearbyPlaces } from '../app/actions/yelp';
+import { GoogleGenAI } from "@google/genai";
 
-// Realistic names for mock data generation
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
+// Realistic names for fallback mock data generation
 const VENUE_PREFIXES = ['Sky', 'Cloud', 'Aero', 'Jet', 'Terminal', 'Runway', 'Pilot', 'Horizon', 'Voyager', 'Navigator'];
 const VENUE_TYPES = ['Grill', 'Lounge', 'Cafe', 'Bistro', 'Market', 'Bar', 'Sushi', 'Burger', 'Suites', 'Inn', 'Pub'];
 
 export async function fetchAmenities(lat: number, lng: number): Promise<Venue[]> {
     try {
-        // Broaden the search to include hotels, bars, and cafes alongside restaurants
         const realData = await searchNearbyPlaces(lat, lng, 'hotels,restaurants,bars,cafes');
         if (realData && realData.length > 0) {
             return realData;
@@ -15,25 +17,19 @@ export async function fetchAmenities(lat: number, lng: number): Promise<Venue[]>
     } catch (e) {
         console.warn("Real Yelp search failed, using fallback.", e);
     }
-
-    // Fallback: Generate deterministic mock venues around the center
     return generateMockVenues(lat, lng);
 }
 
 function generateMockVenues(lat: number, lng: number): Venue[] {
     const venues: Venue[] = [];
     const count = 8;
-    
     for (let i = 0; i < count; i++) {
-        // Scatter around center
         const angle = (Math.PI * 2 * i) / count;
         const radius = 0.004 + (Math.random() * 0.003); 
         const vLat = lat + Math.sin(angle) * radius * 0.7;
         const vLng = lng + Math.cos(angle) * radius;
-        
         const prefix = VENUE_PREFIXES[Math.floor(Math.random() * VENUE_PREFIXES.length)];
         const type = VENUE_TYPES[Math.floor(Math.random() * VENUE_TYPES.length)];
-        
         let cat = 'Restaurant';
         if (type === 'Cafe') cat = 'Coffee & Tea';
         else if (type === 'Lounge' || type === 'Bar' || type === 'Pub') cat = 'Nightlife';
@@ -53,34 +49,36 @@ function generateMockVenues(lat: number, lng: number): Venue[] {
             coordinates: { lat: vLat, lng: vLng }
         });
     }
-    
     return venues;
 }
-
-export const MOCK_PLACES: Venue[] = []; 
-
-// Store chat ID in module scope for the session
-let currentChatId: string | undefined = undefined;
 
 export async function sendUserMessage(text: string, location?: { lat: number, lng: number }): Promise<ChatMessage> {
   let content = '';
   let attachments: Venue[] = [];
   
   try {
-    const response = await askYelpAI(text, currentChatId, location?.lat, location?.lng);
-    content = response.content;
-    currentChatId = response.chatId;
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: text,
+      config: {
+        systemInstruction: `You are SkyPort AI, a professional enterprise airline crisis management assistant. 
+        Your goal is to assist stranded passengers and flight crews. 
+        Be concise, professional, and high-tech in your tone. 
+        Current location context: ${location ? `Lat: ${location.lat}, Lng: ${location.lng}` : 'Unknown'}.
+        If the user asks for places to stay, eat, or wait, mention that you are scanning the local grid for options.`
+      }
+    });
+
+    content = response.text || "Neural link stable. Awaiting further commands.";
 
     const lowerText = text.toLowerCase();
-    // Keywords to trigger amenity search
     const triggers = ['food', 'eat', 'drink', 'stay', 'hotel', 'cafe', 'coffee', 'bar', 'lounge', 'where', 'find', 'near'];
     if (triggers.some(t => lowerText.includes(t)) && location) {
         attachments = await fetchAmenities(location.lat, location.lng);
     }
-
   } catch (e) {
-    console.error("AI Service Error", e);
-    content = "I'm having trouble connecting to the SkyPort network. Please try again.";
+    console.error("Gemini AI Service Error", e);
+    content = "Neural link interrupted. System is operating in restricted mode. Please check local terminal environment variables.";
   }
 
   return {

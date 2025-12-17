@@ -1,113 +1,63 @@
-# 🛫 SkyPort AI: Enterprise Crisis Management & Travel Intelligence
+# 🛫 SkyPort AI | Enterprise Crisis Management System
 
-**SkyPort AI** is a futuristic, high-stakes dashboard designed for airline operations and traveler assistance. It combines real-time global airspace tracking, local amenity intelligence via the Yelp AI Engine, and a neural-linked chat interface to manage travel logistics and crisis recovery in a unified, "Control Tower" environment.
+**SkyPort AI** is a mission-critical, "Enterprise-Grade" recovery dashboard designed for global airline operations. It automates the complex logistics of managing stranded passengers and flight crews during large-scale travel disruptions.
 
-![License](https://img.shields.io/badge/license-Enterprise-blue)
-![Tech Stack](https://img.shields.io/badge/Stack-React%20|%20TypeScript%20|%20Vite-green)
-![Status](https://img.shields.io/badge/System-Operational-emerald)
-
----
-
-## 🛰️ Core Features
-
-### 1. Tactical Airspace Feed (CyberMap)
-*   **Live Traffic**: Real-time visualization of global flights using the OpenSky Network API.
-*   **Sector Navigation**: Rapid-deployment sector switching across 50+ major US Hubs.
-*   **Flight HUD**: Detailed telemetry (altitude, velocity, true track) available on marker selection.
-*   **Trajectory Prediction**: Visual flight paths and position history tracking.
-
-### 2. Neural Chat Interface (SkyPort_Neural)
-*   **AI Intelligence**: Context-aware chat powered by Yelp AI for travel queries.
-*   **Proactive Recommendations**: Automatically triggers amenity scans (Hotels, Lounges, Dining) based on conversation intent.
-*   **Link Stability**: Simulated low-latency neural connection with visual heartbeat and system protocols.
-
-### 3. Hyper-Local Intelligence
-*   **Amenity Nodes**: Dynamic discovery of nearby venues based on the map's current grid coordinates.
-*   **Crisis Recovery**: Categorization of venues (VIP, Family, Economy) to facilitate passenger relocation.
-*   **Weather Telemetry**: Real-time environmental data (KORD/Chicago baseline) fetched from the National Weather Service.
+![Tech Stack](https://img.shields.io/badge/Stack-React_19_|_TypeScript_|_Tailwind_|_Vite-blue)
+![AI](https://img.shields.io/badge/Intelligence-Gemini_3_Flash_|_Yelp_AI-orange)
+![Status](https://img.shields.io/badge/Network-Secure-green)
 
 ---
 
-## 🛠️ Technical Architecture
+## 🛰️ System Architecture
 
-### Tech Stack
-- **Framework**: [React 18](https://react.dev/) + [Vite](https://vitejs.dev/)
-- **Language**: [TypeScript](https://www.typescript.org/) (Strict Mode)
-- **Styling**: [Tailwind CSS](https://tailwindcss.com/)
-- **Animations**: [Framer Motion](https://www.framer.com/motion/)
-- **Mapping**: [Leaflet.js](https://leafletjs.com/) with CartoDB Dark Matter tiles.
-- **Icons**: [Lucide React](https://lucide.dev/)
+### 1. Swarm Recovery Engine
+Located in `app/actions/swarm.ts`, the system deploys autonomous "Recovery Agents" for different passenger segments:
+*   **VIP/Executive**: Prioritizes high-end, quiet venues for business continuity.
+*   **Family**: Identifies large-capacity, kid-friendly environments.
+*   **Economy/Crew**: Sources budget-friendly, high-availability lodging and dining.
+*   **Automated Workflow**: Stranded -> Analyzing -> Booked (with real-time system logs).
 
-### System Services
-- **`aiService.ts`**: Orchestrates communication between the chat UI and backend AI actions.
-- **`openSky.ts`**: Handles live flight telemetry and fallback simulation logic.
-- **`weatherService.ts`**: Direct integration with NWS API for METAR-style data.
-- **`yelp.ts`**: Server-side actions for interacting with the Yelp AI Chat and Search endpoints.
+### 2. Tactical Airspace Feed
+A high-performance `CyberMap` powered by **Leaflet** and **OpenSky Network**:
+*   **Live Tracking**: Real-time vector-based flight paths for over 50+ active aircraft.
+*   **Sector Navigation**: 40+ pre-configured US Airport hubs with tactical overlays.
+*   **Amenity Nodes**: Dynamic discovery of hotels, lounges, and dining using **Yelp Fusion**.
 
----
-
-## 🎨 Visual Philosophy: "Enterprise Cyberpunk"
-SkyPort AI adheres to a specific aesthetic designed for high-focus environments:
-- **Dark Mode Primacy**: Slate-950/Black backgrounds to reduce eye strain during long shifts.
-- **CRT Aesthetics**: Integrated scanlines, screen flickers, and vignetting for an immersive "terminal" vibe.
-- **Tactical Grid**: 50px background grid and HUD corner brackets for spatial awareness.
-- **Monospace Typography**: JetBrains Mono for all data values and system logs to ensure readability.
+### 3. Neural Chat Intelligence
+*   **Core**: Powered by `gemini-3-flash-preview`.
+*   **Contextual Awareness**: The assistant tracks map coordinates and flight status to provide hyper-local advice.
+*   **Tools**: Automatically triggers amenity scans based on conversational intent (e.g., "Where can my crew sleep near JFK?").
 
 ---
 
-## 🚀 Installation & Setup
+## 🚀 Deployment & Environment
 
-### 1. Clone the Repository
-```bash
-git clone https://github.com/your-org/skyport-ai.git
-cd skyport-ai
-```
+The system requires two primary secure keys to reach full operational capacity:
 
-### 2. Install Dependencies
-```bash
-npm install
-```
+1.  **`API_KEY`**: Google Gemini API Key (Required for the Neural Chat Interface).
+2.  **`YELP_API_KEY`**: Yelp Fusion API Key (Required for live local amenity discovery and Swarm Agent rebooking).
 
-### 3. Environment Configuration
+### Local Setup
 Create a `.env` file in the root directory:
-```env
-YELP_API_KEY=your_yelp_api_key_here
-```
-*Note: If no API key is provided, the system will automatically default to High-Fidelity Simulation Mode.*
-
-### 4. Launch Development Server
 ```bash
-npm run dev
-```
-
-### 5. Production Build
-```bash
-npm run build
+API_KEY=your_gemini_key_here
+YELP_API_KEY=your_yelp_key_here
 ```
 
 ---
 
-## 📡 API Integrations
-| Source | Purpose | Frequency |
-| :--- | :--- | :--- |
-| **OpenSky Network** | Live Airspace Tracking | Every 8-10 seconds |
-| **Yelp AI v2** | Conversational Intelligence | On-demand |
-| **National Weather Service** | Local Environmental Data | Initial load |
-| **CartoDB** | Tactical Map Tiles | Tile-based |
+## 🛠️ Operational Controls
+*   **[F]**: Toggle Tactical Fullscreen Mode.
+*   **[HOME]**: Recenter on Primary Hub (Chicago O'Hare / ORD).
+*   **[ESC]**: Emergency exit from fullscreen or command-line clear.
+*   **Deploy All**: Triggers a global recovery swarm for all currently stranded passengers.
+*   **Aggressiveness**: Adjust the AI's search depth vs. speed for venue matching.
 
 ---
 
-## ⌨️ Tactical Controls
-- **[F]**: Toggle Fullscreen Map Mode.
-- **[ESC]**: Exit Fullscreen or Clear search.
-- **[HOME]**: Recenter map on Primary Hub (ORD).
-- **[MODE]**: Switch between ALL, AIR (In-flight), and GND (On-ground) traffic.
+## 📊 Telemetry Data Sources
+*   **Aviation**: OpenSky Network API (with deterministic fallback).
+*   **Environmental**: National Weather Service (NWS) API for KORD telemetry.
+*   **Intelligence**: Google GenAI SDK & Yelp Fusion AI.
 
----
-
-## 🛡️ Enterprise Security
-SkyPort AI utilizes **Server Actions** to protect sensitive API credentials. Communication between the frontend and the Yelp API is proxied through secure server-side routes, ensuring no API keys are exposed to the client-side bundle.
-
----
-**Developed for SkyPort Global Operations.** 
-*Proprietary Intelligence System. Unauthorized access is logged.*
+**Proprietary Software of SkyPort Global Operations. Unauthorized access is logged.**
