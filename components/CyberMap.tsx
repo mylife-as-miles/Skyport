@@ -42,6 +42,7 @@ export default function CyberMap({ passengers, searchQuery, onMapMove }: CyberMa
   const [selectedVenue, setSelectedVenue] = useState<Venue | null>(null);
   const [viewFilter, setViewFilter] = useState<'ALL' | 'AIR' | 'GND'>('ALL');
   const [isExpanded, setIsExpanded] = useState(false);
+  const [radarTick, setRadarTick] = useState(0);
   
   // Navigation State
   const [mapCenter, setMapCenter] = useState<[number, number]>(INITIAL_CENTER as [number, number]);
@@ -163,6 +164,7 @@ export default function CyberMap({ passengers, searchQuery, onMapMove }: CyberMa
             if (!isMounted) return;
             flightsRef.current = data; 
             setLoadingRadar(false);
+            setRadarTick(t => t + 1); // Signal that we have fresh data for markers
         } catch (e) {
             console.error("Flight fetch failed", e);
         }
@@ -175,6 +177,7 @@ export default function CyberMap({ passengers, searchQuery, onMapMove }: CyberMa
 
   // --- 3. AMENITY LOADER ---
   const loadAmenities = async (coords: [number, number]) => {
+      if (!coords || isNaN(coords[0]) || isNaN(coords[1])) return;
       setLoadingAmenities(true);
       
       // Remove existing markers
@@ -263,13 +266,17 @@ export default function CyberMap({ passengers, searchQuery, onMapMove }: CyberMa
   };
 
   const handleFlightClick = (flight: LiveFlight) => {
+    if (!flight) return;
+    // Always find the freshest data from the ref to ensure coordinates are up to date
     const latest = flightsRef.current.find(f => f.icao24 === flight.icao24) || flight;
     setSelectedFlight(latest);
     setSelectedAirport(null); 
     setSelectedVenue(null);
     
     // Proactively scan for amenities near flight position
-    loadAmenities([latest.latitude, latest.longitude]);
+    if (latest.latitude && latest.longitude) {
+        loadAmenities([latest.latitude, latest.longitude]);
+    }
   };
   
   const highlightAirportZone = (airport: Airport, map: L.Map) => {
@@ -347,9 +354,12 @@ export default function CyberMap({ passengers, searchQuery, onMapMove }: CyberMa
                 const marker = aircraftMarkersRef.current[flight.icao24];
                 if (marker) {
                     marker.setLatLng([flight.latitude, flight.longitude]);
-                    const iconDiv = marker.getElement()?.querySelector('.plane-svg-container') as HTMLElement;
-                    if (iconDiv) {
-                        iconDiv.style.transform = `rotate(${flight.true_track}deg)`;
+                    const el = marker.getElement();
+                    if (el) {
+                        const iconDiv = el.querySelector('.plane-svg-container') as HTMLElement;
+                        if (iconDiv) {
+                            iconDiv.style.transform = `rotate(${flight.true_track}deg)`;
+                        }
                     }
                 }
             });
@@ -389,7 +399,9 @@ export default function CyberMap({ passengers, searchQuery, onMapMove }: CyberMa
             </div>
         `;
 
-        if (!aircraftMarkersRef.current[flight.icao24]) {
+        const existingMarker = aircraftMarkersRef.current[flight.icao24];
+
+        if (!existingMarker) {
             const icon = L.divIcon({
                 className: 'aircraft-icon',
                 html: getIconHtml(isSelected),
@@ -403,24 +415,34 @@ export default function CyberMap({ passengers, searchQuery, onMapMove }: CyberMa
 
             aircraftMarkersRef.current[flight.icao24] = marker;
         } else {
-            const marker = aircraftMarkersRef.current[flight.icao24];
-            const icon = L.divIcon({ className: 'aircraft-icon', html: getIconHtml(isSelected), iconSize: [32, 32], iconAnchor: [16, 16] });
-            marker.setIcon(icon);
-            marker.setZIndexOffset(isSelected ? 1000 : 100);
+            const icon = L.divIcon({ 
+                className: 'aircraft-icon', 
+                html: getIconHtml(isSelected), 
+                iconSize: [32, 32], 
+                iconAnchor: [16, 16] 
+            });
+            existingMarker.setIcon(icon);
+            existingMarker.setZIndexOffset(isSelected ? 1000 : 100);
+            // Re-bind click listener with current flight closure data
+            existingMarker.off('click').on('click', () => handleFlightClick(flight));
         }
     });
 
     Object.keys(aircraftMarkersRef.current).forEach(id => {
         if (!visibleIds.has(id)) {
-            aircraftMarkersRef.current[id].remove();
-            delete aircraftMarkersRef.current[id];
-            if (trailsRef.current[id]) {
-                trailsRef.current[id].remove();
+            const marker = aircraftMarkersRef.current[id];
+            if (marker) {
+                marker.remove();
+                delete aircraftMarkersRef.current[id];
+            }
+            const trail = trailsRef.current[id];
+            if (trail) {
+                trail.remove();
                 delete trailsRef.current[id];
             }
         }
     });
-  }, [selectedFlight, flightsRef.current.length, viewFilter]);
+  }, [selectedFlight, flightsRef.current.length, viewFilter, radarTick]);
 
   // --- 7. EXTERNAL SEARCH SYNC ---
   useEffect(() => {
