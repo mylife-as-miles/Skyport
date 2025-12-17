@@ -1,5 +1,5 @@
 import { ChatMessage, Venue, MapCommand } from '../types';
-import { searchNearbyPlaces } from '../app/actions/yelp';
+import { searchNearbyPlaces, askYelpAI } from '../app/actions/yelp';
 import { GoogleGenAI } from "@google/genai";
 
 // Initialize with a mock key if missing to prevent crash, but warn
@@ -66,15 +66,11 @@ export async function sendUserMessage(text: string, location?: { lat: number, ln
   let command: MapCommand | undefined;
   
   if (!ai || apiKey === 'mock_key') {
-      // Return a friendly offline message if AI is not configured
       content = "I am currently offline or missing my API key. Please check your configuration. I can still track flights and show nearby places if you select an airport.";
-
-      // Basic keyword matching for demo purposes
       const lowerText = text.toLowerCase();
       if (location && (lowerText.includes('food') || lowerText.includes('hotel'))) {
           attachments = await fetchAmenities(location.lat, location.lng);
       }
-
       return {
         id: Math.random().toString(36).substr(2, 9),
         role: 'assistant',
@@ -82,6 +78,34 @@ export async function sendUserMessage(text: string, location?: { lat: number, ln
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         attachments
       };
+  }
+
+  // Check if query is best served by Yelp AI (e.g., specific venue questions, comparisons, discovery)
+  const lowerText = text.toLowerCase();
+  const yelpKeywords = ['find', 'recommend', 'restaurant', 'cafe', 'hotel', 'bar', 'food', 'place', 'near', 'reservation', 'price'];
+  const isYelpQuery = yelpKeywords.some(k => lowerText.includes(k));
+
+  if (isYelpQuery && location) {
+       // Hybrid Approach: Ask Yelp AI for the content
+       try {
+           const yelpResponse = await askYelpAI(text, undefined, location.lat, location.lng);
+           content = yelpResponse.content;
+
+           // Still try to fetch markers for the map if relevant
+           if (lowerText.includes('find') || lowerText.includes('recommend') || lowerText.includes('near')) {
+              attachments = await fetchAmenities(location.lat, location.lng);
+           }
+
+           return {
+                id: Math.random().toString(36).substr(2, 9),
+                role: 'assistant',
+                content,
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                attachments
+           };
+       } catch (e) {
+           console.warn("Yelp AI failed, falling back to Gemini", e);
+       }
   }
 
   try {
@@ -116,15 +140,12 @@ export async function sendUserMessage(text: string, location?: { lat: number, ln
 
     const rawText = response.text || "Neural link stable. Awaiting further commands.";
 
-    // Attempt to parse JSON command from the end of the response
-    // Regex to find the last JSON block
     const jsonMatch = rawText.match(/\{[\s\S]*\}$/);
     if (jsonMatch) {
         try {
             const potentialCommand = JSON.parse(jsonMatch[0]);
             if (potentialCommand.type === 'FLY_TO' || potentialCommand.type === 'SCAN_AREA') {
                 command = potentialCommand;
-                // Remove the JSON from the displayed text
                 content = rawText.replace(jsonMatch[0], '').trim();
             } else {
                 content = rawText;
@@ -137,16 +158,11 @@ export async function sendUserMessage(text: string, location?: { lat: number, ln
         content = rawText;
     }
 
-    // Fallback: If no explicit JSON command but keywords exist, trigger legacy behavior or infer command
-    const lowerText = text.toLowerCase();
-    const triggers = ['food', 'eat', 'drink', 'stay', 'hotel', 'cafe', 'coffee', 'bar', 'lounge', 'where', 'find', 'near'];
-
-    // If command is explicitly SCAN_AREA, execute fetch
     if (command?.type === 'SCAN_AREA' && location) {
          attachments = await fetchAmenities(location.lat, location.lng);
     }
-    // Legacy trigger if no command found
-    else if (!command && triggers.some(t => lowerText.includes(t)) && location) {
+    else if (!command && isYelpQuery && location) {
+        // Fallback for attachments if Gemini handled the text but it was place-related
         attachments = await fetchAmenities(location.lat, location.lng);
     }
 

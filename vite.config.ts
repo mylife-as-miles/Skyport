@@ -9,6 +9,16 @@ export default defineConfig(({ mode }) => {
     server: {
       host: true,
       proxy: {
+        '/api/yelp-ai': {
+          target: 'https://api.yelp.com/ai/chat/v2',
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/api\/yelp-ai/, ''),
+          headers: {
+             Authorization: `Bearer ${env.YELP_API_KEY}`,
+             'Content-Type': 'application/json',
+             'Accept': 'application/json'
+          }
+        },
         '/api/yelp': {
           target: 'https://api.yelp.com/v3',
           changeOrigin: true,
